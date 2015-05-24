@@ -72,7 +72,7 @@ def munge_abundance_files(abundances):
             gene_map[transcript_id].append(float(tpm))
     median_gene_map = {}
     for transcript, vals in gene_map.iteritems():
-        med = int(round(np.median(np.array(vals))))
+        med = np.median(np.array(vals))
         median_gene_map[transcript] = med
     return median_gene_map
 
@@ -93,7 +93,7 @@ def rescale_dict(d, new_min=0.0, new_max=1000.0):
     old_min = min(d.itervalues())
     old_max = max(d.itervalues())
     def _rescale(old_min, old_max, new_min, new_max, old_val):
-        return (((old_val - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min
+        return int(round((((old_val - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min))
     return {x: _rescale(old_min, old_max, new_min, new_max, y) for x, y in d.iteritems()}
 
 
@@ -148,7 +148,7 @@ def filter_normalized_expression_map_by_database(db, normalized_expression_map):
 def mkdir_p(path):
     try:
         os.makedirs(path)
-    except OSError as exc: # Python >2.5
+    except OSError as exc:
         if exc.errno == errno.EEXIST and os.path.isdir(path):
             pass
         else: raise
