@@ -14,6 +14,8 @@ from itertools import izip
 from collections import defaultdict
 from math import log
 
+from src.helperFunctions import mkdir_p
+
 from sonLib.bioio import popenCatch
 
 databases = ["wgEncodeGencodeCompVM4", "wgEncodeGencodeBasicVM4", "wgEncodeGencodePseudoGeneVM4"]
@@ -144,15 +146,6 @@ def filter_normalized_expression_map_by_database(db, normalized_expression_map):
                 bed_record[4] = expression
                 final_map[genome][tissue][gene] = bed_record
     return final_map
-
-
-def mkdir_p(path):
-    try:
-        os.makedirs(path)
-    except OSError as exc:
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else: raise
 
 
 def main():

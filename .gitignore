@@ -1,3 +1,5 @@
+gencode_VM4_Reference/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

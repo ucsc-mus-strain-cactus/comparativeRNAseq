@@ -13,4 +13,4 @@ fi
 
 umask 0002
 
-python kallisto_remap.py --jobTree ${jobTree} --batchSystem ${batchSystem} --logLevel DEBUG --maxThreads ${maxThreads} &> ${log}
+python bin/kallisto_from_fastq.py --jobTree ${jobTree} --batchSystem ${batchSystem} --logLevel DEBUG --maxThreads ${maxThreads} &> ${log}

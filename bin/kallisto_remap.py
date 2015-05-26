@@ -14,6 +14,8 @@ import argparse
 import pysam
 from itertools import izip
 
+from src.helperFunctions import mkdir_p, fastq_read_size
+
 from jobTree.scriptTree.target import Target
 from jobTree.scriptTree.stack import Stack
 from jobTree.src.bioio import setLoggingFromOptions, system, logger, fastqRead
@@ -97,30 +99,8 @@ def kallisto_single(target, genome, institute, tissue, bam, reference, out_dir, 
 
 def build_out_dirs(out_dir, genome, institute, tissue, bam):
     out_path = os.path.join(out_dir, genome, institute, tissue, os.path.basename(bam).split(".")[0])
-    try:
-        os.makedirs(out_path)
-    except OSError:
-        pass
+    mkdir_p(out_path)
     return out_path
-
-
-def is_paired_sequencing(bamfile):
-    # TODO: this is scary. Should check for unpaired being 0, and number paired == total number
-    r = pysam.flagstat(bamfile)
-    paired = int(r[5].split()[0])
-    if paired != 0:
-        return True
-    else:
-        return False
-
-
-def fastq_read_size(fastq_path, num_reads=10000):
-    sizes = []
-    fastq_handle = fastqRead(fastq_path)
-    for i in xrange(num_reads):
-        name, seq, qual = fastq_handle.next()
-        sizes.append(len(seq))
-    return 1.0 * sum(sizes) / len(sizes)
 
 
 def main():

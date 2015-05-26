@@ -87,15 +87,6 @@ def get_record_map(file_map):
     return record_map    
 
 
-def mkdir_p(path):
-    try:
-        os.makedirs(path)
-    except OSError as exc:
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else: raise
-
-
 def main():
     args = parse_args()
     file_map = find_splice_junction_files(args.target_dir)

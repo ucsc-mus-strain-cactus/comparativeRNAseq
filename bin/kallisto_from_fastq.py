@@ -14,6 +14,8 @@ import argparse
 import pysam
 from itertools import izip
 
+from src.helperFunctions import mkdir_p, fastq_read_size, find_paired_fastqs
+
 from jobTree.scriptTree.target import Target
 from jobTree.scriptTree.stack import Stack
 from jobTree.src.bioio import setLoggingFromOptions, system, logger, fastqRead
@@ -26,27 +28,8 @@ def build_parser():
     parser.add_argument("--reference", help="kallisto reference", 
                         default="gencode_VM4_Reference/kallisto_reference/tgencode.VM4.idx")
     parser.add_argument("--out_dir", help="output location (base directory)", 
-                        default="/hive/groups/recon/projs/mus_strain_cactus/pipeline_data/rnaseq/expression")
+                        default="/hive/groups/recon/projs/mus_strain_cactus/pipeline_data/rnaseq/kallisto_expression")
     return parser
-
-
-def find_paired_fastqs(source_dir, base_path, files):
-    fastq_files = {}
-    base_filenames = {x.split(".")[0] for x in files}
-    experiments = {x.split("_")[0] for x in base_filenames}
-    for experiment in experiments:
-        if experiment in base_filenames:
-            # this experiment is unpaired
-            path = os.path.join(source_dir, base_path, experiment + ".fastq.gz")
-            assert os.path.exists(path)
-            fastq_files[experiment] = path
-        else:
-            # this experiment is paired
-            fwd = os.path.join(source_dir, base_path, experiment + "_1.fastq.gz")
-            rev = os.path.join(source_dir, base_path, experiment + "_2.fastq.gz")
-            assert all([os.path.exists(fwd), os.path.exists(rev)])
-            fastq_files[experiment] = [fwd, rev]
-    return fastq_files
 
 
 def wrapper(target, source_dir, reference, out_dir):
@@ -56,7 +39,7 @@ def wrapper(target, source_dir, reference, out_dir):
                 genome, rna_seq, institute, tissue = base_path.replace(source_dir, "").split("/")[1:]
             except ValueError:
                 raise RuntimeError("Looks like the directory structure is not what we expected.")
-            fastq_files = find_paired_fastqs(source_dir, baes_path, files)
+            fastq_files = find_paired_fastqs(source_dir, base_path, files)
             for experiment, fastq_path in fastq_files.iteritems():
                 try:
                     fwd_fastq_path, rev_fastq_path = fastq_path
@@ -65,7 +48,7 @@ def wrapper(target, source_dir, reference, out_dir):
                 except ValueError:
                     read_size = fastq_read_size(fastq_path)
                     target.addChildTargetFn(kallisto_single, args=(genome, institute, tissue, reference, out_dir, 
-                                                                   experiment, fastq_path))
+                                                                   experiment, fastq_path, read_size))
 
 
 def kallisto_paired(target, genome, institute, tissue, reference, out_dir, experiment, fwd_fastq_path, rev_fastq_path):
@@ -80,20 +63,8 @@ def kallisto_single(target, genome, institute, tissue, reference, out_dir, exper
 
 def build_out_dirs(out_dir, genome, institute, tissue, experiment):
     out_path = os.path.join(out_dir, genome, institute, tissue, experiment)
-    try:
-        os.makedirs(out_path)
-    except OSError:
-        pass
+    mkdir_p(out_path)
     return out_path
-
-
-def fastq_read_size(fastq_path, num_reads=10000):
-    sizes = []
-    fastq_handle = fastqRead(fastq_path)
-    for i in xrange(num_reads):
-        name, seq, qual = fastq_handle.next()
-        sizes.append(len(seq))
-    return 1.0 * sum(sizes) / len(sizes)
 
 
 def main():
