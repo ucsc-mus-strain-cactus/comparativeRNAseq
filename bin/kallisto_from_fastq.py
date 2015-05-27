@@ -80,5 +80,5 @@ def main():
 
 
 if __name__ == "__main__":
-    from kallisto_remap import *
+    from bin.kallisto_from_fastq import *
     main()

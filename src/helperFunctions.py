@@ -1,6 +1,7 @@
 import sys
 import os
 import errno
+import gzip
 from jobTree.src.bioio import fastqRead
 
 def mkdir_p(path):
@@ -43,7 +44,7 @@ def is_paired_sequencing(bamfile):
 
 def fastq_read_size(fastq_path, num_reads=10000):
     sizes = []
-    fastq_handle = fastqRead(fastq_path)
+    fastq_handle = fastqRead(gzip.open(fastq_path))
     for i in xrange(num_reads):
         name, seq, qual = fastq_handle.next()
         sizes.append(len(seq))

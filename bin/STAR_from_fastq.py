@@ -18,10 +18,10 @@ from jobTree.scriptTree.target import Target
 from jobTree.scriptTree.stack import Stack
 from jobTree.src.bioio import setLoggingFromOptions, system, logger, getRandomAlphaNumericString
 
-def parse_args():
+def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dir", help="Directory containing fastq files.",
-                        default="hive/groups/recon/projs/mus_strain_cactus/data/assembly_rel_1505/fastqs/"
+    parser.add_argument("--source_dir", help="Directory containing fastq files.",
+                        default="/hive/groups/recon/projs/mus_strain_cactus/data/assembly_rel_1505/fastqs/"
                                 "ftp-mouse.sanger.ac.uk/REL-1505-RNA-Seq/fastq")
     parser.add_argument("--out_dir", help="output location (base directory)", 
                         default="/hive/groups/recon/projs/mus_strain_cactus/pipeline_data/rnaseq/STAR_output")
@@ -67,6 +67,7 @@ def run_paired_star(target, genome, institute, tissue, reference, out_dir, exper
     system(this_star_base_cmd + star_flags)
     os.remove(tmp_dir)
 
+
 def run_single_star(target, genome, institute, tissue, reference, out_dir, experiment, fastq_path):
     tmp_dir = os.path.join(target.getLocalTempDir(), "tmp_" + getRandomAlphaNumericString())
     out_path = build_out_dirs(out_dir, genome, institute, tissue, experiment)
@@ -86,3 +87,13 @@ def main():
     Stack.addJobTreeOptions(parser)
     args = parser.parse_args()
     setLoggingFromOptions(args)
+
+    i = Stack(Target.makeTargetFn(wrapper, args=(args.source_dir, args.reference, args.out_dir))).startJobTree(args)
+
+    if i != 0:
+        raise RuntimeError("Got failed jobs")
+
+
+if __name__ == "__main__":
+    from bin.STAR_from_fastq import *
+    main()

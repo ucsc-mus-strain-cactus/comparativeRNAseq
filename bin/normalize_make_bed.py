@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 """
-Digs through kallisto output to find median expression for each tissue type.
-Correlates this expression with the genome positions in the reference gencode database 
+Digs through kallisto* output to find median expression for each tissue type.
+Correlates this expression with the genome positions in the reference gencode database.
+
+No reason this won't work for other expression output, but will have to write a different function to munge the
+abundance files.
 """
 
 import sys
@@ -24,7 +27,7 @@ databases = ["wgEncodeGencodeCompVM4", "wgEncodeGencodeBasicVM4", "wgEncodeGenco
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target_dir", help="kallisto output location (base directory)", 
-                        default="/hive/groups/recon/projs/mus_strain_cactus/pipeline_data/rnaseq/expression")
+                        default="/hive/groups/recon/projs/mus_strain_cactus/pipeline_data/rnaseq/kallisto_expression")
     parser.add_argument("--out_dir", help="output dir", default="/cluster/home/ifiddes/mus_strain_data/pipeline_data"
                                                                 "/rnaseq/log_expression_bedfiles")
     return parser.parse_args()

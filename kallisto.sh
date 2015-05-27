@@ -1,7 +1,7 @@
 #!/usr/bin/bash
-batchSystem="parasol"
-jobTree=".jobTree"
-maxThreads="15"
+batchSystem="singleMachine"
+jobTree=".kallistoJobTree"
+maxThreads="10"
 log="kallisto.log"
 
 export PATH=./sonLib/bin:./jobTree/bin:${PATH}
@@ -13,4 +13,5 @@ fi
 
 umask 0002
 
-python bin/kallisto_from_fastq.py --jobTree ${jobTree} --batchSystem ${batchSystem} --logLevel DEBUG --maxThreads ${maxThreads} &> ${log}
+python bin/kallisto_from_fastq.py --jobTree ${jobTree} --batchSystem ${batchSystem} --logLevel DEBUG \
+--maxThreads ${maxThreads} &> ${log}
