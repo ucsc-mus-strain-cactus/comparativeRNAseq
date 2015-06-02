@@ -12,7 +12,7 @@ import sys
 import os
 import argparse
 
-from src.helperFunctions import mkdir_p, fastq_read_size, find_paired_fastqs
+from src.helperFunctions import mkdir_p, fastq_read_size, find_paired_fastqs, name_map
 
 from jobTree.scriptTree.target import Target
 from jobTree.scriptTree.stack import Stack
@@ -36,7 +36,8 @@ star_flags = (" --outSAMunmapped Within --outSAMtype BAM SortedByCoordinate  --o
              "--outFilterMismatchNmax 999 --outFilterMismatchNoverReadLmax 0.04 --alignIntronMin 20 "
              "--alignIntronMax 1000000 --alignMatesGapMax 1000000 --alignSJoverhangMin 8 --alignSJDBoverhangMin 1 "
              "--sjdbScore 1 --readFilesCommand zcat --quantMode TranscriptomeSAM --quantTranscriptomeBan Singleend "
-             "--outWigType wiggle")
+             "--outWigType wiggle --limitBAMsortRAM 80000000000")
+
 # format star_base_cmd for each STAR call
 star_paired_cmd = "STAR --genomeDir {} --readFilesIn {} {} --outFileNamePrefix {} --outTmpDir {}"
 star_single_cmd = "STAR --genomeDir {} --readFilesIn {} --outFileNamePrefix {} --outTmpDir {}"
@@ -50,6 +51,7 @@ def wrapper(target, source_dir, reference, out_dir):
             except ValueError:
                 raise RuntimeError("Looks like the directory structure is not what we expected.")
             fastq_files = find_paired_fastqs(source_dir, base_path, files)
+            genome = name_map[genome]
             for experiment, fastq_path in fastq_files.iteritems():
                 try:
                     fwd_fastq_path, rev_fastq_path = fastq_path
@@ -62,18 +64,16 @@ def wrapper(target, source_dir, reference, out_dir):
 
 def run_paired_star(target, genome, institute, tissue, reference, out_dir, experiment, fwd_fastq_path, rev_fastq_path):
     tmp_dir = os.path.join(target.getLocalTempDir(), "tmp_" + getRandomAlphaNumericString())
-    out_path = build_out_dirs(out_dir, genome, institute, tissue, experiment)
+    out_path = build_out_dirs(out_dir, genome, institute, tissue, experiment) + "/"
     this_star_base_cmd = star_paired_cmd.format(reference, fwd_fastq_path, rev_fastq_path, out_path, tmp_dir)
     system(this_star_base_cmd + star_flags)
-    os.remove(tmp_dir)
 
 
 def run_single_star(target, genome, institute, tissue, reference, out_dir, experiment, fastq_path):
     tmp_dir = os.path.join(target.getLocalTempDir(), "tmp_" + getRandomAlphaNumericString())
-    out_path = build_out_dirs(out_dir, genome, institute, tissue, experiment)
+    out_path = build_out_dirs(out_dir, genome, institute, tissue, experiment) + "/"
     this_star_base_cmd = star_single_cmd.format(reference, fastq_path, out_path, tmp_dir)
     system(this_star_base_cmd + star_flags)
-    os.remove(tmp_dir)
 
 
 def build_out_dirs(out_dir, genome, institute, tissue, experiment):

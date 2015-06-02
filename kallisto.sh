@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 batchSystem="singleMachine"
 jobTree=".kallistoJobTree"
-maxThreads="10"
+maxThreads="15"
 log="kallisto.log"
 
 export PATH=./sonLib/bin:./jobTree/bin:${PATH}

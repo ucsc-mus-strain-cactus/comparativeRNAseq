@@ -19,7 +19,7 @@ from math import log
 
 from src.helperFunctions import mkdir_p
 
-from sonLib.bioio import popenCatch
+from sonLib.bioio import popenCatch, system
 
 databases = ["wgEncodeGencodeCompVM4", "wgEncodeGencodeBasicVM4", "wgEncodeGencodePseudoGeneVM4"]
 

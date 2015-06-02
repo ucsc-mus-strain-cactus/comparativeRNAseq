@@ -14,7 +14,7 @@ import argparse
 import pysam
 from itertools import izip
 
-from src.helperFunctions import mkdir_p, fastq_read_size, find_paired_fastqs
+from src.helperFunctions import mkdir_p, fastq_read_size, find_paired_fastqs, name_map
 
 from jobTree.scriptTree.target import Target
 from jobTree.scriptTree.stack import Stack
@@ -40,6 +40,7 @@ def wrapper(target, source_dir, reference, out_dir):
             except ValueError:
                 raise RuntimeError("Looks like the directory structure is not what we expected.")
             fastq_files = find_paired_fastqs(source_dir, base_path, files)
+            genome = name_map[genome]
             for experiment, fastq_path in fastq_files.iteritems():
                 try:
                     fwd_fastq_path, rev_fastq_path = fastq_path

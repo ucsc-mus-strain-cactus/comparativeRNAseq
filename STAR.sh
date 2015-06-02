@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 batchSystem="singleMachine"
 jobTree=".STARjobTree"
-maxThreads="10"
+maxThreads="25"
 log="STAR.log"
 defaultMemory="8589934592"
 

@@ -2,7 +2,16 @@ import sys
 import os
 import errno
 import gzip
+import re
 from jobTree.src.bioio import fastqRead
+
+
+name_map = {"CBA_J": "CBAJ", "BALB_cJ": "BALBcJ", "PWK_PhJ": "PWKPhJ", "NOD_ShiLtJ": "NODShiLtJ",
+            "A_J": "AJ", "LP_J": "LPJ", "WSB_EiJ": "WSBEiJ", "Pahari_EiJ": "PAHARIEiJ",
+            "C57BL_6NJ": "C57B6NJ", "AKR_J": "AKRJ", "DBA_2J": "DBA2J", "NZO_HlLtJ": "NZOHlLtJ",
+            "129S1_SvImJ": "129S1", "CAST_EiJ": "CASTEiJ", "CAROLI_EiJ": "CAROLIEiJ",
+            "C3H_HeJ": "C3HHeJ", "SPRET_EiJ": "SPRETEiJ"}
+
 
 def mkdir_p(path):
     try:
@@ -10,26 +19,39 @@ def mkdir_p(path):
     except OSError as exc:
         if exc.errno == errno.EEXIST and os.path.isdir(path):
             pass
-        else: raise
+        else:
+            raise
+
+
+def hardcoded_experiments(a):
+    """
+    Uses hard coded information about what experiments we expect to see to rename things.
+    """
+    if "Caroli" in a or "Pahari" in a:
+        return a.split("_")[0]
+    elif a.startswith("ERR"):
+        return a.split("_")[0]
+    elif a.startswith("SRR") and "_" in a:
+        return a.split("_")[0]
+    elif a.startswith("SRR"):
+        return a.split(".")[0]
+    elif re.match("^[BT]", a).pos == 0:
+        return "_".join(a.split("_")[:3])
+    # if we get here we need to write more rules
+    raise RuntimeError("Error: need to hardcode new experiment names.")
 
 
 def find_paired_fastqs(source_dir, base_path, files):
-    fastq_files = {}
-    base_filenames = {x.split(".")[0] for x in files}
-    experiments = {x.split("_")[0] for x in base_filenames}
-    for experiment in experiments:
-        if experiment in base_filenames:
-            # this experiment is unpaired
-            path = os.path.join(source_dir, base_path, experiment + ".fastq.gz")
-            assert os.path.exists(path)
-            fastq_files[experiment] = path
+    experiment_map = {}
+    for x in files:
+        experiment = hardcoded_experiments(x)
+        p = os.path.join(source_dir, base_path, x)
+        if experiment in experiment_map:
+            assert not type([]) == type(experiment_map[experiment]), (experiment_map[experiment], p)
+            experiment_map[experiment] = [experiment_map[experiment], p]
         else:
-            # this experiment is paired
-            fwd = os.path.join(source_dir, base_path, experiment + "_1.fastq.gz")
-            rev = os.path.join(source_dir, base_path, experiment + "_2.fastq.gz")
-            assert all([os.path.exists(fwd), os.path.exists(rev)])
-            fastq_files[experiment] = [fwd, rev]
-    return fastq_files
+            experiment_map[experiment] = p
+    return experiment_map
 
 
 def is_paired_sequencing(bamfile):
