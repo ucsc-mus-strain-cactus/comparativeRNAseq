@@ -63,6 +63,7 @@ def wrapper(target, source_dir, reference, out_dir):
 
 
 def run_paired_star(target, genome, institute, tissue, reference, out_dir, experiment, fwd_fastq_path, rev_fastq_path):
+    # STAR wants a temp dir that doesn't exist, so we have to give it a fresh path because jobTree makes localTempDir()
     tmp_dir = os.path.join(target.getLocalTempDir(), "tmp_" + getRandomAlphaNumericString())
     out_path = build_out_dirs(out_dir, genome, institute, tissue, experiment) + "/"
     this_star_base_cmd = star_paired_cmd.format(reference, fwd_fastq_path, rev_fastq_path, out_path, tmp_dir)
