@@ -6,13 +6,6 @@ import re
 from jobTree.src.bioio import fastqRead
 
 
-name_map = {"CBA_J": "CBAJ", "BALB_cJ": "BALBcJ", "PWK_PhJ": "PWKPhJ", "NOD_ShiLtJ": "NODShiLtJ",
-            "A_J": "AJ", "LP_J": "LPJ", "WSB_EiJ": "WSBEiJ", "Pahari_EiJ": "PAHARIEiJ",
-            "C57BL_6NJ": "C57B6NJ", "AKR_J": "AKRJ", "DBA_2J": "DBA2J", "NZO_HlLtJ": "NZOHlLtJ",
-            "129S1_SvImJ": "129S1", "CAST_EiJ": "CASTEiJ", "CAROLI_EiJ": "CAROLIEiJ",
-            "C3H_HeJ": "C3HHeJ", "SPRET_EiJ": "SPRETEiJ"}
-
-
 def mkdir_p(path):
     try:
         os.makedirs(path)

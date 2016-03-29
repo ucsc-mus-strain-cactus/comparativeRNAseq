@@ -2,7 +2,7 @@
 """
 Kallisto from fastqs.
 
-Hunts through --dir (which is a FTP download from ftp://ftp-mouse.sanger.ac.uk/) and runs kallisto. 
+Hunts through --dir (which is a FTP download from ftp://ftp-mouse.sanger.ac.uk/) and runs kallisto.
 Designed with 1505 fastq release in mind. The starting directory structure will be copied.
 
 Attempts to determine if the input RNAseq was paired or unpaired and acts accordingly.
@@ -25,30 +25,39 @@ def build_parser():
     parser.add_argument("--source_dir", help="Directory containing files.",
                         default="/hive/groups/recon/projs/mus_strain_cactus/data/assembly_rel_1505/fastqs/"
                                 "ftp-mouse.sanger.ac.uk/REL-1505-RNA-Seq/fastq")
-    parser.add_argument("--reference", help="kallisto reference", 
-                        default="gencode_VM4_Reference/kallisto_reference/tgencode.VM4.idx")
-    parser.add_argument("--out_dir", help="output location (base directory)", 
-                        default="/hive/groups/recon/projs/mus_strain_cactus/pipeline_data/rnaseq/kallisto_expression")
+    parser.add_argument("--out_dir", help="output location (base directory)", required=True)
+    parser.add_argument('--include_tissues', nargs='+', default=None,
+                        help='Space separated list of tissues to include. If set, will only do these.')
+    refs = parser.add_mutually_exclusive_group(required=True)
+    refs.add_argument("--reference", help="reference directory for STAR")
+    refs.add_argument('--ref_dir', help='reference directory of directories. Mutually exclusive with --reference. '
+                                        'Each directory should be in the format genome/ref_files')
     return parser
 
 
-def wrapper(target, source_dir, reference, out_dir):
-    for base_path, dirs, files in os.walk(source_dir):
+def wrapper(target, args):
+    for base_path, dirs, files in os.walk(args.source_dir):
         if files:
             try:
-                genome, rna_seq, institute, tissue = base_path.replace(source_dir, "").split("/")[1:]
+                genome, rna_seq, institute, tissue = base_path.replace(args.source_dir, "").split("/")[1:]
             except ValueError:
                 raise RuntimeError("Looks like the directory structure is not what we expected.")
-            fastq_files = find_paired_fastqs(source_dir, base_path, files)
-            genome = name_map[genome]
+            if args.include_tissues is not None and tissue not in args.include_tissues:
+                continue
+            fastq_files = find_paired_fastqs(args.source_dir, base_path, files)
+            if args.reference is not None:
+                reference = args.reference
+            else:
+                reference = os.path.join(args.ref_dir, genome)
+            assert reference is not None
             for experiment, fastq_path in fastq_files.iteritems():
                 try:
                     fwd_fastq_path, rev_fastq_path = fastq_path
-                    target.addChildTargetFn(kallisto_paired, args=(genome, institute, tissue, reference, out_dir, 
+                    target.addChildTargetFn(kallisto_paired, args=(genome, institute, tissue, reference, args.out_dir,
                                                                    experiment, fwd_fastq_path, rev_fastq_path))
                 except ValueError:
                     read_size = fastq_read_size(fastq_path)
-                    target.addChildTargetFn(kallisto_single, args=(genome, institute, tissue, reference, out_dir, 
+                    target.addChildTargetFn(kallisto_single, args=(genome, institute, tissue, reference, args.out_dir,
                                                                    experiment, fastq_path, read_size))
 
 
@@ -74,7 +83,7 @@ def main():
     args = parser.parse_args()
     setLoggingFromOptions(args)
 
-    i = Stack(Target.makeTargetFn(wrapper, args=(args.source_dir, args.reference, args.out_dir))).startJobTree(args)
+    i = Stack(Target.makeTargetFn(wrapper, args=(args,))).startJobTree(args)
 
     if i != 0:
         raise RuntimeError("Got failed jobs")

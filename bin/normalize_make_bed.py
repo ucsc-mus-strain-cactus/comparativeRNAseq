@@ -145,9 +145,10 @@ def filter_normalized_expression_map_by_database(db, normalized_expression_map):
             genes_to_keep = val_map.viewkeys() & db.viewkeys()
             for gene in genes_to_keep:
                 expression = normalized_expression_map[genome][tissue][gene]
-                bed_record = db[gene]
-                bed_record[4] = expression
-                final_map[genome][tissue][gene] = bed_record
+                if expression > 10:
+                    bed_record = db[gene]
+                    bed_record[4] = expression
+                    final_map[genome][tissue][gene] = bed_record
     return final_map
 
 
