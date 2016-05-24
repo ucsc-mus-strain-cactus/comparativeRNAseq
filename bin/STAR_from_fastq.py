@@ -14,7 +14,8 @@ import argparse
 from src.helperFunctions import mkdir_p, fastq_read_size, find_paired_fastqs
 from jobTree.scriptTree.target import Target
 from jobTree.scriptTree.stack import Stack
-from jobTree.src.bioio import setLoggingFromOptions, system, logger, getRandomAlphaNumericString
+from jobTree.src.bioio import setLoggingFromOptions, getRandomAlphaNumericString
+from pycbio.sys.procOps import runProc
 
 
 def build_parser():
@@ -25,6 +26,7 @@ def build_parser():
     parser.add_argument("--out_dir", help="output location (base directory)", required=True)
     parser.add_argument('--num_threads', default=8)
     parser.add_argument('--rsem', action='store_true', help='Run RSEM as well?. Assumes RSEM index is built in same folder as STAR index.')
+    parser.add_argument('--htseq', action='store_true', help='Run HTSeq-count as well? Assumes a GTF with the genome name is in the same folder as the STAR index.')
     parser.add_argument('--include_tissues', nargs='+', default=None,
                         help='Space separated list of tissues to include. If set, will only do these.')
     refs = parser.add_mutually_exclusive_group(required=True)
@@ -35,16 +37,12 @@ def build_parser():
 
 
 # star_flags variable should not need changing per run
-star_flags = (" --outSAMunmapped Within --outSAMtype BAM SortedByCoordinate  --outBAMcompression -1 "
-             "--outFilterType BySJout --outSAMattributes NH HI AS NM MD --outFilterMultimapNmax 20 "
-             "--outFilterMismatchNmax 999 --outFilterMismatchNoverReadLmax 0.04 --alignIntronMin 20 "
-             "--alignIntronMax 1000000 --alignMatesGapMax 1000000 --alignSJoverhangMin 8 --alignSJDBoverhangMin 1 "
-             "--sjdbScore 1 --readFilesCommand zcat --quantMode TranscriptomeSAM "
-             "--outWigType wiggle --limitBAMsortRAM 80000000000")
-
-# format star_base_cmd for each STAR call
-star_paired_cmd = "STAR --genomeDir {} --readFilesIn {} {} --outFileNamePrefix {} --outTmpDir {} --runThreadN {}"
-star_single_cmd = "STAR --genomeDir {} --readFilesIn {} --outFileNamePrefix {} --outTmpDir {} --runThreadN {}"
+star_flags = ['--outSAMunmapped', 'Within', '--outSAMtype', 'BAM', 'SortedByCoordinate', '--outBAMcompression', '-1',
+              '--outFilterType', 'BySJout', '--outSAMattributes', 'NH', 'HI', 'AS', 'NM', 'MD',
+              '--outFilterMultimapNmax', '20', '--outFilterMismatchNmax', '999', '--outFilterMismatchNoverReadLmax',
+              '0.04', '--alignIntronMin', '20', '--alignIntronMax', '1000000', '--alignMatesGapMax', '1000000',
+              '--alignSJoverhangMin', '8', '--alignSJDBoverhangMin', '1', '--sjdbScore', '1', '--readFilesCommand',
+              'zcat', '--quantMode', 'TranscriptomeSAM', '--outWigType', 'wiggle', '--limitBAMsortRAM', '80000000000']
 
 def wrapper(target, args):
     for base_path, dirs, files in os.walk(args.source_dir):
@@ -60,37 +58,43 @@ def wrapper(target, args):
                 reference = args.reference
             else:
                 reference = os.path.join(args.ref_dir, genome)
-            assert reference is not None
             for experiment, fastq_path in fastq_files.iteritems():
                 try:
                     fwd_fastq_path, rev_fastq_path = fastq_path
                     target.addChildTargetFn(run_paired_star, args=(genome, institute, tissue, reference, args.out_dir,
                                                                    experiment, fwd_fastq_path, rev_fastq_path,
-                                                                   args.num_threads, args.rsem))
+                                                                   args.num_threads, args.rsem, args.htseq))
                 except ValueError:
                     target.addChildTargetFn(run_single_star, args=(genome, institute, tissue, reference, args.out_dir,
                                                                    experiment, fastq_path,
-                                                                   args.num_threads, args.rsem))
+                                                                   args.num_threads, args.rsem, args.htseq))
 
 
 def run_paired_star(target, genome, institute, tissue, reference, out_dir, experiment, fwd_fastq_path, rev_fastq_path,
-                    num_threads, rsem):
+                    num_threads, rsem, htseq):
     # STAR wants a temp dir that doesn't exist, so we have to give it a fresh path because jobTree makes localTempDir()
     tmp_dir = os.path.join(target.getLocalTempDir(), "tmp_" + getRandomAlphaNumericString())
     out_path = build_out_dirs(out_dir, genome, institute, tissue, experiment) + "/"
-    this_star_base_cmd = star_paired_cmd.format(reference, fwd_fastq_path, rev_fastq_path, out_path, tmp_dir, num_threads)
-    system(this_star_base_cmd + star_flags)
+    star_cmd = ['STAR', '--genomeDir', reference, '--readFilesIn', fwd_fastq_path, rev_fastq_path,
+                '--outFileNamePrefix', out_path, '--outTmpDir', tmp_dir, '--runThreadN', num_threads]
+    runProc(star_cmd + star_flags)
     if rsem is True:
         target.setFollowOnTargetFn(run_rsem, args=(genome, out_path, reference, True), cpu=1)
+    if htseq is True:
+        target.setFollowOnTargetFn(run_htseq, args=(genome, out_path, reference), cpu=1)
 
 
-def run_single_star(target, genome, institute, tissue, reference, out_dir, experiment, fastq_path, num_threads, rsem):
+def run_single_star(target, genome, institute, tissue, reference, out_dir, experiment, fastq_path, num_threads, rsem,
+                    htseq):
     tmp_dir = os.path.join(target.getLocalTempDir(), "tmp_" + getRandomAlphaNumericString())
     out_path = build_out_dirs(out_dir, genome, institute, tissue, experiment) + "/"
-    this_star_base_cmd = star_single_cmd.format(reference, fastq_path, out_path, tmp_dir, num_threads)
-    system(this_star_base_cmd + star_flags)
+    star_cmd = ['STAR', '--genomeDir', reference, '--readFilesIn', fastq_path,
+                '--outFileNamePrefix', out_path, '--outTmpDir', tmp_dir, '--runThreadN', num_threads]
+    runProc(star_cmd + star_flags)
     if rsem is True:
         target.setFollowOnTargetFn(run_rsem, args=(genome, out_path, reference, False), cpu=1)
+    if htseq is True:
+        target.setFollowOnTargetFn(run_htseq, args=(genome, out_path, reference), cpu=1)
 
 
 def run_rsem(target, genome, out_path, reference, is_paired):
@@ -100,7 +104,16 @@ def run_rsem(target, genome, out_path, reference, is_paired):
     cmd = ['rsem-calculate-expression', '--bam', bam, '--temporary-folder', target.getLocalTempDir(), ref, out_rsem]
     if is_paired is True:
         cmd.append('--paired-end')
-    system(' '.join(map(str, cmd)))
+    runProc(cmd)
+
+
+def run_htseq(target, genome, out_path, reference):
+    ref = os.path.join(reference, genome, genome + '.gtf')
+    bam = os.path.join(out_path, 'Aligned.sortedByCoord.out.bam')
+    out_counts = os.path.join(out_path, 'htseq.counts')
+    cmd = ['htseq-count', '-m', 'union', '-r', 'pos', '-i', 'gene_id', '-a', '10', '--stranded=no', '-f', 'bam',
+           bam, ref]
+    runProc(cmd, stdout=out_counts)
 
 
 def build_out_dirs(out_dir, genome, institute, tissue, experiment):
